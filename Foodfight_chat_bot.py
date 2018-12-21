@@ -1,11 +1,4 @@
 # -*- coding: utf-8 -*-
-import json
-import csv
-import re
-import urllib.request
-import time
-import random
-
 from selenium.webdriver.common.keys import Keys
 from selenium import webdriver
 from bs4 import BeautifulSoup
@@ -13,14 +6,22 @@ from slackclient import SlackClient
 from flask import Flask, request, make_response, render_template
 from slacker import Slacker
 from threading import Thread
+
 import multiprocessing as mp
+import json
+import csv
+import re
+import urllib.request
+import time
+import random
+
 
 app = Flask(__name__)
 
-slack_token = "xoxb-505014660117-507419645299-7ZgXFi1QWfQAAyQ2pDPSKMQq"
-slack_client_id = "505014660117.507523199394"
-slack_client_secret = "1f7b3a351ceeab9ce32d46c841358eb4"
-slack_verification = "IamWoSTzSfYxoPC6LJmrPDLM"
+slack_token = None
+slack_client_id = None
+slack_client_secret = None
+slack_verification = None
 sc = SlackClient(slack_token)
 
 seoul_region = {'wrong': 'wrong', '강남': '09680660', '강동': '09740110', '강북': '09305101', '강서': '09500603', '관악': '09620585', '광진': '09215104',
@@ -31,19 +32,19 @@ seoul_region = {'wrong': 'wrong', '강남': '09680660', '강동': '09740110', '�
                 '군포': '02410620', '김포': '02570105'}
 
 flag = {'시작': False, '음식': False, '날씨': False, '대화': False}
-channel_name = ['#slackbot-project', '#foodfight_bot_test']
-selenium_flag = False
+channel_name = ['#slackbot-project', '#foodfight_bot_test', '#general', '#mine']
+
 
 def slack_notify(text=None, channel=channel_name[1], username='FoodFightbot', attachments=None):
-    token = 'xoxb-505014660117-507419645299-7ZgXFi1QWfQAAyQ2pDPSKMQq' #토근값은 공개저장소에 공개되지 않도록 주의
+    token = None #토근값은 공개저장소에 공개되지 않도록 주의
     slack = Slacker(token)
     slack.chat.post_message(text=text, channel=channel, username=username, attachments=attachments, as_user=True)
 
 
-def make_attachment(fallback=None, pretext=None, title=None, title_link=None, text=None, image_url=None):
+def make_attachment(fallback=None, pretext=None, title=None, title_link=None, text=None, image_url=None, color="#14f5de"):
     attachments = [{
                 "fallback": fallback,      # 메세지 알림시 축약형으로 표시
-                "color": "#14f5de",        # 옆에 바형 색
+                "color": color,        # 옆에 바형 색
                 "pretext": pretext,        # '바'가 시작하기 전에 쓰일 문장
                 "title": title,            # 진하게 표시되는 문구
                 "title_link": title_link,  # 타이틀 누르면 이동
@@ -70,17 +71,20 @@ def selenium_reader(address):
 
     # url에 접근한다
     driver.get('https://www.google.com/maps/')
-    print(address)
+
     driver.find_element_by_id('searchboxinput').send_keys(address)
     driver.find_element_by_id("searchboxinput").send_keys(Keys.ENTER)
 
     time.sleep(3)
 
-    print(driver.current_url)
     return driver.current_url
 
 
 def _info_reader(text):
+    attach = make_attachment(fallback="데이터 수집중", pretext="Working!!",
+                             text="곧 나와요!!"
+                             , title="데이터를 수집하고 있습니다.")
+    slack_notify(attachments=attach)
     text_s = text.split(" ")[1]
     if text_s.isalpha():
         info_s = []
@@ -220,7 +224,7 @@ def select_weather(text):
 
         keyword = '┌─────────────┐\n' + '│ ' + area + '\t\t│\n' + '│ 시간 : ' + time + sign['time'] + '  \t\t\t\t│' + \
                   '\n│ 기온 : ' + degree + sign['degree'] + '\t\t\t\t\t│\n│ 강수확률 : ' + raining + sign['percent'] + \
-                  '     \t\t│' + '\n│ ' + '미세먼지 : ' + dust + '   \t\t│' '\n└─────────────┘' + '\n□ 더 많은 정보를 원하신다면? □\n' + url
+                  '       \t│' + '\n│ ' + '미세먼지 : ' + dust + '   \t\t│' '\n└─────────────┘' + '\n□ 더 많은 정보를 원하신다면? □\n' + url
         attach = make_attachment(fallback="날씨궁금궁금궁금", pretext="Here is your area weather", text=keyword
                                  , title="■ 당신의 기상정보 나왔습니다 ■", image_url="https://ssl.pstatic.net/static/weather/images/w_icon/w_t01.gif")
         slack_notify(attachments=attach)
@@ -292,16 +296,23 @@ def start_chat_bot(text):
 # 텍스트를 통한 응답 함수
 def _crawl_naver_keywords(text):
     # 여기에 함수를 구현해봅시다.
+    if "공지" in text:
+        attach = make_attachment(fallback="6반 공지사항", pretext="▶공지사항◀", title="[ 출석체크 관련 ]", color="#e80505",
+                                 text="9시 이전에 꼭 출석체크 해주세요ㅠㅠ\n출결 관리가 너무 엄격하네요ㅠㅠ")
+        slack_notify(attachments=attach)
+        return
+
+
     if "시작" in text and not flag['시작']:
         start_chat_bot(text)
         return
-    elif "음식" in text or "1" in text and flag['음식']:
+    elif "음식" in text or "1" in text or flag['음식']:
         food_main(text)
         return
     elif "날씨" in text or "2" in text or flag['날씨']:
         weather_main(text)
         return
-    elif "대화" in text or "3" in text and flag['대화']:
+    elif "대화" in text or "3" in text or flag['대화']:
         conversation_main(text)
         return
     else:
@@ -333,7 +344,7 @@ def hears():
         message = "Invalid Slack verification token: %s" % (slack_event["token"])
         make_response(message, 403, {"X-Slack-No-Retry": 1})
 
-    if "event" in slack_event and selenium_flag == False:
+    if "event" in slack_event:
         event_type = slack_event["event"]["type"]
         return _event_handler(event_type, slack_event)
 
@@ -368,6 +379,5 @@ if __name__ == '__main__':
     p = Thread(target=processing_event, args=(event_queue,))
     p.start()
     print("subprocess started")
-
     app.run('127.0.0.1', port=8080)
     p.join()
