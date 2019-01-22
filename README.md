@@ -1,6 +1,6 @@
 # <img width="60" src="https://user-images.githubusercontent.com/30898520/50325037-cd6e5680-0525-11e9-8bbe-ac5014ab9c33.jpg">FoodFight_bot
 
-### About FoodFight bot
+
 * [ Here's the Partner Link! ](https://github.com/AhnTan/ahntan_ssafy_chatBot)
 <div>
 
