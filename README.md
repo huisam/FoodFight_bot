@@ -42,9 +42,9 @@
 </div>
 
 >* 셀레니움을 통한 지도 관련 uri를 가져오는 코드입니다.
-
-    def selenium_reader(address):
-    	options = webdriver.ChromeOptions()
+```python
+def selenium_reader(address):
+	options = webdriver.ChromeOptions()
     	options.add_argument('headless')
     	options.add_argument('window-size=1920x1080')
     	options.add_argument("--disable-gpu")
@@ -61,7 +61,7 @@
 
     	print(driver.current_url)
     return driver.current_url
-   
+```   
 <br/><br/>
 
 
